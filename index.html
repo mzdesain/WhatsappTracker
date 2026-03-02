@@ -15,15 +15,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .loading-shimmer {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -32,12 +23,9 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
         
-        // Helper to render Lucide icons in simple HTML/React env
         const Icon = ({ name, className, size = 24 }) => {
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
             }, [name]);
             return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
         };
@@ -50,7 +38,7 @@
             const [error, setError] = useState('');
             const [loadingStep, setLoadingStep] = useState('');
 
-            // PENTING: MASUKKAN API KEY ANDA DI DALAM TANDA KUTIP DI BAWAH INI
+            // GANTI DENGAN API KEY BARU YANG ANDA SALIN DARI GOOGLE AI STUDIO
             const apiKey = "AIzaSyByVrQqEqUO41mR5ZkpPitNJS_OJeyLmB4"; 
 
             const validateNumber = (number) => {
@@ -69,18 +57,19 @@
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: userQuery }] }],
                             systemInstruction: { parts: [{ text: systemPrompt }] },
-                            generationConfig: { 
-                                responseMimeType: "application/json",
-                                temperature: 0.1 
-                            }
+                            generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
                         })
                     });
                     
-                    if (!response.ok) throw new Error('Cek kembali API Key Anda');
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error ${response.status}: ${errorData.error?.message || 'Kunci ditolak'}`);
+                    }
+                    
                     const data = await response.json();
                     return JSON.parse(data.candidates[0].content.parts[0].text);
                 } catch (err) {
-                    throw new Error(err.message || 'Gagal menghubungi server');
+                    throw err;
                 }
             };
 
@@ -88,35 +77,21 @@
                 setError('');
                 const cleanNumber = validateNumber(phoneNumber);
                 
-                if (!cleanNumber) {
-                    setError('Nomor tidak valid. Gunakan format 628xxx.');
-                    return;
-                }
-                
-                if (!apiKey) {
-                    setError('API Key belum diisi di dalam kode index.html.');
-                    return;
-                }
+                if (!cleanNumber) return setError('Nomor tidak valid (Minimal 10 digit).');
+                if (!apiKey || apiKey === "PASTE_API_KEY_ANDA_DI_SINI") return setError('Harap masukkan API Key Anda ke dalam kode index.html.');
 
                 setIsLoading(true);
                 setLookupResult(null);
                 
                 try {
-                    setLoadingStep('Menghubungkan ke satelit...');
-                    await new Promise(r => setTimeout(r, 1000));
+                    setLoadingStep('Mengamankan jalur satelit...');
+                    await new Promise(r => setTimeout(r, 800));
                     
                     setLoadingStep('Menganalisis pendaftaran HLR...');
                     const resultData = await callGemini(cleanNumber);
                     
-                    setLoadingStep('Sinkronisasi koordinat wilayah...');
-                    await new Promise(r => setTimeout(r, 800));
-
-                    const result = { 
-                        id: Date.now(), 
-                        clean: cleanNumber, 
-                        timestamp: new Date().toLocaleString(), 
-                        ...resultData 
-                    };
+                    setLoadingStep('Memetakan koordinat...');
+                    const result = { id: Date.now(), clean: cleanNumber, timestamp: new Date().toLocaleString(), ...resultData };
                     
                     setLookupResult(result);
                     setHistory(prev => [result, ...prev.slice(0, 4)]);
@@ -133,22 +108,18 @@
                     <div className="max-w-5xl mx-auto">
                         <header className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-3">
-                                <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg shadow-emerald-200">
+                                <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg">
                                     <Icon name="radar" className="text-white" size={32} />
                                 </div>
                                 <div>
                                     <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Track-X Intelligence</h1>
-                                    <p className="text-emerald-600 text-[10px] font-bold uppercase tracking-[0.2em]">HLR Localization v2.4</p>
+                                    <p className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest">HLR Localization v2.4</p>
                                 </div>
-                            </div>
-                            <div className="hidden md:block text-[10px] font-mono text-slate-400">
-                                STATUS: {apiKey ? 'READY' : 'API_KEY_MISSING'}
                             </div>
                         </header>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 space-y-6">
-                                {/* Search Bar */}
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-white">
                                     <div className="flex flex-col sm:flex-row gap-3">
                                         <div className="relative flex-1">
@@ -157,100 +128,62 @@
                                             </div>
                                             <input
                                                 type="text"
-                                                placeholder="Contoh: 62812345678"
+                                                placeholder="628xxxxxxxx"
                                                 className="w-full pl-14 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 font-medium text-lg outline-none"
                                                 value={phoneNumber}
                                                 onChange={(e) => setPhoneNumber(e.target.value)}
                                                 onKeyPress={(e) => e.key === 'Enter' && handleLookup()}
                                             />
                                         </div>
-                                        <button 
-                                            onClick={handleLookup} 
-                                            disabled={isLoading}
-                                            className="bg-slate-900 hover:bg-black text-white px-10 py-4 rounded-2xl font-bold uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                                        >
+                                        <button onClick={handleLookup} disabled={isLoading} className="bg-slate-900 hover:bg-black text-white px-10 py-4 rounded-2xl font-bold uppercase transition-all flex items-center justify-center gap-2">
                                             {isLoading ? <Icon name="refresh-cw" className="animate-spin" size={20} /> : <Icon name="navigation" size={20} />}
-                                            {isLoading ? "Memproses..." : "Lacak"}
+                                            LACAK
                                         </button>
                                     </div>
-                                    {loadingStep && <p className="mt-3 text-emerald-600 text-xs font-bold animate-pulse flex items-center gap-2"><Icon name="activity" size={14} /> {loadingStep}</p>}
-                                    {error && <p className="mt-3 text-red-500 text-sm font-medium flex items-center gap-2"><Icon name="alert-circle" size={16} /> {error}</p>}
+                                    {loadingStep && <p className="mt-3 text-emerald-600 text-xs font-bold animate-pulse">{loadingStep}</p>}
+                                    {error && <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 font-medium">{error}</div>}
                                 </div>
 
-                                {/* Results */}
                                 {lookupResult && (
                                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-500">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detail Target</span>
-                                                <div className="flex items-center justify-between mt-2">
-                                                    <p className="text-2xl font-black text-slate-800">+{lookupResult.clean}</p>
-                                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold uppercase">{lookupResult.status}</span>
-                                                </div>
-                                                <div className="mt-4 flex justify-between text-sm">
-                                                    <span className="text-slate-500">Provider</span>
-                                                    <span className="font-bold">{lookupResult.provider}</span>
-                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Detail Target</span>
+                                                <p className="text-2xl font-black text-slate-800 mt-1">+{lookupResult.clean}</p>
+                                                <p className="text-sm font-bold text-emerald-600 uppercase mt-1">{lookupResult.provider}</p>
                                             </div>
                                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lokasi Pendaftaran</span>
-                                                <div className="mt-2">
-                                                    <p className="font-bold text-slate-700 text-lg leading-tight">{lookupResult.village}, {lookupResult.city}</p>
-                                                    <p className="text-xs text-slate-500 font-medium">{lookupResult.province}, {lookupResult.country} {lookupResult.flag}</p>
-                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Lokasi Terdeteksi</span>
+                                                <p className="font-bold text-slate-700 text-lg mt-1">{lookupResult.village}, {lookupResult.city}</p>
+                                                <p className="text-xs text-slate-500 font-medium">{lookupResult.province}</p>
                                             </div>
                                         </div>
-
-                                        {/* Map Container */}
                                         <div className="bg-white p-2 rounded-[2.5rem] shadow-xl border border-white h-[450px] relative overflow-hidden">
                                             <iframe 
                                                 width="100%" height="100%" frameBorder="0" 
                                                 src={`https://www.openstreetmap.org/export/embed.html?bbox=${lookupResult.lng-0.005}%2C${lookupResult.lat-0.005}%2C${lookupResult.lng+0.005}%2C${lookupResult.lat+0.005}&layer=mapnik&marker=${lookupResult.lat}%2C${lookupResult.lng}`}
-                                                className="rounded-[2rem] grayscale-[20%]"
+                                                className="rounded-[2rem]"
                                             ></iframe>
-                                            <div className="absolute top-6 left-6 bg-black/80 backdrop-blur text-white px-4 py-2 rounded-xl text-[10px] font-mono border border-white/20">
-                                                COORD: {lookupResult.lat.toFixed(5)}, {lookupResult.lng.toFixed(5)}
-                                            </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Sidebar History */}
                             <div className="space-y-6">
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="font-black text-slate-800 uppercase text-xs tracking-tighter flex items-center gap-2">
-                                            <Icon name="history" size={16} className="text-emerald-500" /> Recent Activity
-                                        </h3>
-                                    </div>
+                                    <h3 className="font-black text-slate-800 uppercase text-xs mb-4">Riwayat Terkini</h3>
                                     <div className="space-y-3">
-                                        {history.length === 0 ? (
-                                            <p className="text-slate-300 text-[10px] italic text-center py-10 uppercase font-bold tracking-widest">No Logs Found</p>
-                                        ) : (
-                                            history.map(item => (
-                                                <div 
-                                                    key={item.id} 
-                                                    className="p-4 rounded-2xl bg-slate-50 border border-transparent hover:border-emerald-200 transition-all cursor-pointer group"
-                                                    onClick={() => setLookupResult(item)}
-                                                >
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <p className="font-bold text-sm text-slate-700">+{item.clean}</p>
-                                                        <span className="text-xs">{item.flag}</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-slate-400 font-medium group-hover:text-emerald-600 transition-colors uppercase">{item.city}</p>
-                                                </div>
-                                            ))
-                                        )}
+                                        {history.map(item => (
+                                            <div key={item.id} className="p-4 rounded-2xl bg-slate-50 border border-transparent hover:border-emerald-200 cursor-pointer" onClick={() => setLookupResult(item)}>
+                                                <p className="font-bold text-sm">+{item.clean}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase">{item.city}</p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white">
-                                    <h4 className="font-bold text-xs uppercase text-emerald-400 mb-2 flex items-center gap-2">
-                                        <Icon name="shield-check" size={16} /> Privacy Info
-                                    </h4>
-                                    <p className="text-[10px] leading-relaxed text-slate-400">
-                                        Pelacakan dilakukan melalui database HLR publik. Data lokasi merujuk pada area registrasi nomor asli.
-                                    </p>
+                                    <h4 className="font-bold text-xs uppercase text-emerald-400 mb-2">Pemberitahuan</h4>
+                                    <p className="text-[10px] leading-relaxed text-slate-400">Gunakan API Key Gemini dari Google AI Studio untuk mengaktifkan fitur pencarian berbasis kecerdasan buatan ini.</p>
                                 </div>
                             </div>
                         </div>
