@@ -7,7 +7,7 @@ import {
   ShieldCheck, 
   AlertCircle,
   Phone,
-  Globe,
+  Globe, 
   Trash2,
   Share2,
   MapPin,
@@ -26,7 +26,13 @@ const App = () => {
   const [error, setError] = useState('');
   const [loadingStep, setLoadingStep] = useState('');
 
-  const apiKey = ""; // Environment handles this
+  /**
+   * PENTING: Untuk lingkungan eksekusi ini, apiKey harus diatur ke string kosong ("").
+   * Kunci API akan disediakan secara otomatis oleh sistem saat runtime.
+   * Jika Anda meng-host ini di Vercel/GitHub, Anda bisa menggantinya kembali 
+   * menjadi process.env.VITE_GEMINI_API_KEY atau import.meta.env.VITE_GEMINI_API_KEY.
+   */
+  const apiKey = ""; 
 
   const validateNumber = (number) => {
     const cleanNumber = number.replace(/\D/g, '');
@@ -191,7 +197,6 @@ const App = () => {
             {/* Result Display Area */}
             {lookupResult && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-700">
-                {/* Result Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Analysis</span>
@@ -238,7 +243,6 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* Real Interactive Map (OpenStreetMap) */}
                 <div className="bg-white p-2 rounded-[2.5rem] shadow-xl border border-white overflow-hidden">
                   <div className="relative h-[450px] w-full rounded-[2rem] overflow-hidden bg-slate-200">
                     <iframe 
@@ -254,7 +258,6 @@ const App = () => {
                       className="grayscale-[20%] contrast-[110%]"
                     ></iframe>
                     
-                    {/* Map UI Overlays */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2">
                        <div className="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-xl text-xs font-mono shadow-2xl border border-white/10 flex items-center gap-2">
                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
@@ -315,7 +318,6 @@ const App = () => {
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
               <div className="flex items-center justify-between mb-6">
@@ -378,7 +380,6 @@ const App = () => {
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="mt-12 text-center text-slate-400 text-[10px] font-bold uppercase tracking-[0.3em] pb-12">
           <p>Global Intelligence Engine &bull; Enterprise Version 2.4.1</p>
         </footer>
